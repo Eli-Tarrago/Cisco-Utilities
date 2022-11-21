@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+PLUGIN_BASE='/opt/cisco/anyconnect/bin/plugins'
+read -r -d '' USAGE << EGASU
+Usage: `basename $0` [-s|-e|-d|-h]
+    -s, --status    Print SYSTEM Roaming Security module status
+    -e, --enable    Enable SYSTEM Roaming Security module
+    -d, --disable   Disable SYSTEM Roaming Security module
+    -h, --help      Show this message.
+EGASU
+# Check plugin status, return 0 if enabled, 1 if disabled
+function check_status {
+    [[ -f $PLUGIN_BASE/libacisectrl.dylib ]] &&
+    [[ -f $PLUGIN_BASE/libaciseshim.dylib ]] 
+}
+# Check if plugin disabled by utility, return 0 if yes, 1 if no
+function verify_plugin_disabled {
+    [[ -f $PLUGIN_BASE/disabled/libacisectrl.dylib ]] &&
+    [[ -f $PLUGIN_BASE/disabled/libaciseshim.dylib ]]
+}
+# Disable plugin
+function disable_plugin {
+    sudo mkdir -p $PLUGIN_BASE/disabled
+    sudo mv -f $PLUGIN_BASE/libacisectrl.dylib $PLUGIN_BASE/libaciseshim.dylib  $PLUGIN_BASE/disabled
+}
+# Enable plugin
+function enable_plugin {
+    sudo mv -f $PLUGIN_BASE/disabled/libaciseshim.dylib $PLUGIN_BASE/disabled/libacisectrl.dylib  $PLUGIN_BASE/
+}
+case "$1" in
+    '-s'|'--status')
+        check_status &&
+        echo SYSTEM Roaming Security Module for AnyConnect is ENABLED. ||
+        echo SYSTEM Roaming Security Module for AnyConnect is DISABLED.
+        exit 0
+        ;;
+    '-e'|'--enable')
+        verify_plugin_disabled &&
+        enable_plugin &&
+        echo SYSTEM Roaming Security Module for AnyConnect has been ENABLED. &&
+        exit 0 ||
+        echo ERROR: SYSTEM Roaming Security Module for AnyConnect can only be enabled if it has previously been disabled by this utility.
+        exit 1
+        ;;
+    '-d'|'--disable')
+        check_status &&
+        disable_plugin &&
+        echo SYSTEM Roaming Security Module for AnyConnect has been DISABLED. ||
+        echo ERROR: SYSTEM Roaming Security Module for AnyConnect does not appear to be enabled.
+        exit 1
+        ;;
+    '-h'|'--help')
+        echo "$USAGE"
+        exit 0
+        ;;
+    *)
+        echo "$USAGE"
+        exit 1
+        ;;
+esac
